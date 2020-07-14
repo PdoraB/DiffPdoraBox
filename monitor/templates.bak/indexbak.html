@@ -1,0 +1,287 @@
+<meta http-equiv="Content-Type"content="text/html;charset=utf-8">
+<html align='left'>
+<head>
+   <base href="<%=basePath%>">
+
+    <title>产品详细</title>
+
+	<meta http-equiv="pragma" content="no-cache">
+	<meta http-equiv="cache-control" content="no-cache">
+	<meta http-equiv="expires" content="0">
+	<meta http-equiv="keywords" content="keyword1,keyword2,keyword3">
+	<meta http-equiv="description" content="This is my page">
+	<!--
+	<link rel="stylesheet" type="text/css" href="styles.css">
+	-->
+	<style type="text/css">
+		*{ margin:0; padding:0; font-size:12px;}
+		.windows-container {position:absolute;background:#fff; border:1px solid #dfe7ed; width:300px; min-height:120px;}
+		.windows-container h2 { position:relative; background:#378dd4; color:#fff; height:30px;line-height:30px; padding-left:5px;}
+		.windows-container h2 a { position:absolute; right:3px; top:0px; text-decoration:none; color:#fff;}
+		.windows-data {min-height: 20px;max-height: 100px;overflow: auto;}
+		.datalist { border-collapse:collapse; width:100%;}
+		.datalist th { background:#fdfdfd;}
+		.datalist th, .datalist td { border:1px solid #f8f8f8; line-height:2;text-align: center;}
+	</style>
+	<script type="text/javascript" src="src/js/jquery-1.4.2.min.js"></script>
+	<script type="text/javascript">
+	function productdetail(){
+		var os = $('#div').offset();
+		$('#productdetail').css({"left":os.left,"top":os.top}).toggle();//定位在os位置，并加入显示隐藏效果
+	}
+    </script>
+
+</head>
+<body >
+    <h1>样本值班</h1>
+
+    <h2>样本信息</h2>
+    <form method="post">  <!-- 指定提交方法為 POST -->
+    <label for="date">值班日期</label>
+    <input type="text" name="date" id="date"><br>  <!-- 文字輸入框 -->
+    <label for="name">名字</label>
+    <input type="text" name="name" id="name"><br>  <!-- 文字輸入框 -->
+    <label for="flow_cell">flow_cell</label>
+    <input type="text" name="flow_cell" id="flow_cell"><br>  <!-- 文字輸入框 -->
+    <input type="submit" name="submit" value="建立文件夹">  <!-- 提交按鈕 -->
+    </form>
+    <p>样本信息 : 值班时间 : {{date}}&nbsp;&nbsp;  </p>
+    <p>值班人 : ***&nbsp;&nbsp;{{name}}：***</p>
+    <p>flow_cell : ***&nbsp;&nbsp;{{flow_cell}}：***</p>
+    <form action="/" method=post enctype=multipart/form-data>
+      <p><input type=file name=file>
+         <input type=submit value=Upload>
+    </form>
+    <p>文件存放路径 :  {{filename}}&nbsp;&nbsp;  </p>
+    <h2>详细信息</h2>
+    <div id="table-1">
+  <div class="table-header">
+    <div class="set-page-size">
+
+    </div>
+
+  </div>
+        <a href="{{ url_for('hello') }}">Click Me!</a>
+  <table class="simple-table">
+    <thead>
+          <tr>
+        <th>sample_PID</th>
+        <th>sample_T</th>
+        <th>sample_N</th>
+<!--        <th>ags_result</th>-->
+<!--        <th>arg_result</th>-->
+        <th>arg_sub</th>
+        <th>arg_wait</th>
+        <th>check</th>
+<!--        <td>重新投递</td>-->
+        <td>重新投递加new</td>
+        <td>重新投递加ba1</td>
+    </tr>
+    </thead>
+    <tbody>
+          {% for _, row in a.iterrows() %}
+    <tr align='center'>
+        <td >{{ row["sample_PID"] }}</td>
+        <td>{{ row["sample_T"] }}</td>
+        <td>{{ row["sample_N"] }}</td>
+<!--        <td>{{ row["ags_result"] }}</td>-->
+<!--        <td>{{ row["arg_result"] }}</td>-->
+        <td>{{ row["arg_sub"] }}</td>
+        <td>{{ row["arg_wait"] }}</td>
+        <td>{{ row["check"] }}</td>
+        <td><button><a href="/delarg/{{ row['sample_T'] }}">删除sub</a></button> </td>
+        <td><button><a href="/delags/{{ row['sample_T'] }}">删除ags</a></button></td>
+        <td><a href="/delags">重新投递</a></td>
+        <td><from><input type="text" name="args" id="args"><button>重新投递加参数</button></from>></td>,
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <div class="table-footer">
+
+</div>
+
+
+
+
+        <div id="hot_area" class="hot_area"><a href="javascript:productdetail(1);">共有6个产品</a></div>
+  	<div id="div" style="width:400px;height:200px;background:#54dab3;margin-left:10px;"></div>
+	<div id="productdetail" class="windows-container" style="display: none;">
+		<h2>
+			<span>产品详细</span><a href="javascript:productdetail();">×</a>
+		</h2>
+		<div class="windows-contents">
+			<table class="datalist">
+				<colgroup>
+					<col width="80px" />
+					<col width="100px" />
+					<col width="*" />
+				</colgroup>
+				<thead>
+					<tr>
+						<th>产品类型</th>
+						<th>产品号码</th>
+						<th>入网时间</th>
+					</tr>
+				</thead>
+			</table>
+		</div>
+		<div class="windows-data">
+			<table class="datalist">
+				<colgroup>
+					<col width="80px" />
+					<col width="100px" />
+					<col width="*" />
+				</colgroup>
+				<tbody class="ccaa">
+					<tr>
+						<td>宽带</td>
+						<td>43050453</td>
+						<td>20080128</td>
+					</tr>
+					<tr>
+						<td>宽带</td>
+						<td>43050453</td>
+						<td>20080128</td>
+					</tr><tr>
+						<td>宽带</td>
+						<td>43050453</td>
+						<td>20080128</td>
+					</tr><tr>
+						<td>宽带</td>
+						<td>43050453</td>
+						<td>20080128</td>
+					</tr><tr>
+						<td>宽带</td>
+						<td>43050453</td>
+						<td>20080128</td>
+					</tr>
+					<tr>
+						<td>宽带</td>
+						<td>43050453</td>
+						<td>20080128</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+
+
+            <style>
+              #table-1 {
+                background-color: #ffffcc;
+                padding: 1rem;
+
+                display: flex;
+                flex-direction: column;
+                max-width: 800px;
+              }
+
+              #table-1 .table-header {
+                flex: 0 0 40px;
+
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+
+                font-size: 0.85rem;
+              }
+
+              #table-1 .table-footer {
+                flex: 0 0 40px;
+
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+
+                font-size: 0.85rem;
+                padding-top: 10px;
+              }
+
+              /* table 样式 */
+
+              table.simple-table {
+                flex: 1;
+                border-collapse: collapse;
+                table-layout: fixed;
+              }
+
+              table.simple-table .number-cell {
+                text-align: right;
+                padding-right: 10px;
+              }
+
+              table.simple-table td,
+              table.simple-table th {
+                padding: 0 0 0 10px;
+                height: 35px;
+                font-size: 0.8rem;
+                border-bottom: solid 1px #dddddd;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+
+              table.simple-table th {
+                height: 40px;
+                text-align: left;
+                font-size: 0.85rem;
+              }
+
+              table.simple-table .task-name {
+                min-width: 450px;
+              }
+
+              table.simple-table .task-type {
+                max-width: 4rem;
+                width: 4rem;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+
+              table.simple-table tbody tr:hover {
+                background-color: #eee;
+              }
+                </style>
+
+</body>
+</html>
+
+
+
+
+<!--<table border="1" width = "40%" cellspacing='0' cellpadding='0',class="center">-->
+<!--    <tr>-->
+<!--        <th>sample_PID</th>-->
+<!--        <th>sample_T</th>-->
+<!--        <th>sample_N</th>-->
+<!--        <th>ags_result</th>-->
+<!--        <th>ago_result</th>-->
+<!--        <th>ago_sub</th>-->
+<!--        <th>ago_wait</th>-->
+<!--        <th>check</th>-->
+<!--    </tr>-->
+
+<!--    {% for _, row in a.iterrows() %}-->
+<!--    <tr align='center'>-->
+<!--        <td>{{ row["sample_PID"] }}</td>-->
+<!--        <td>{{ row["sample_T"] }}</td>-->
+<!--        <td>{{ row["sample_N"] }}</td>-->
+<!--        <td>{{ row["ags_result"] }}</td>-->
+<!--        <td>{{ row["arg_result"] }}</td>-->
+<!--        <td>{{ row["arg_sub"] }}</td>-->
+<!--        <td>{{ row["arg_wait"] }}</td>-->
+<!--        <td>{{ row["check"] }}</td>-->
+<!--    </tr>-->
+<!--    {% endfor %}-->
+<!--    </table>-->
+<!--&lt;!&ndash;    {% for _, row in a.iterrows() %}&ndash;&gt;-->
+<!--&lt;!&ndash;        The day {{ row["ags_result"] }} was {{ row["ago_sub"] }}.&ndash;&gt;-->
+<!--&lt;!&ndash;    {% endfor %}&ndash;&gt;-->
+<!--    <h2>图片显示</h2>-->
+<!--    {% for item in body %}-->
+<!--        <p>{{ item.shijian }}</p>-->
+<!--        <a name="{{ item.shijian }}"> <img static="{{ item.image_path }}" width="640"></a>-->
+<!--        <br>-->
+<!--    {% endfor%}-->
