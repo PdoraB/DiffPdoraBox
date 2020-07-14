@@ -27,7 +27,7 @@ def func_ags(sample,ags_list,num):
     :param num: 样本列表
     :return: ags_list
     '''
-    print ("start ags",sample)
+    # print ("start ags",sample)
     # with open("out.txt","a+") as f :
         # subprocess.call("hand ags list|grep -i W067750T",shell=True)
     sub = subprocess.Popen(f"hand ags list|grep -i {sample}",stdout=subprocess.PIPE,shell=True)#
@@ -46,7 +46,14 @@ def func_ags(sample,ags_list,num):
         # f.write(out.decode('utf-8'))
 
 def func_arg(sample,arg_list,num):
-    print ("start ago",sample)
+    '''
+    Gevent 处理arg
+    :param sample:
+    :param arg_list:
+    :param num:
+    :return:
+    '''
+    # print ("start ago",sample)
     # subprocess.call("hand ags list|grep -i W067750T",shell=True)
     sub = subprocess.Popen(f"hand aro list -n sxlj|grep -i {sample}", stdout=subprocess.PIPE,shell=True)
     out,err = sub.communicate()
@@ -59,6 +66,11 @@ def func_arg(sample,arg_list,num):
         num.append(sample)
         arg_list.append(out.decode('utf-8'))
 def main(jobs):
+    '''
+    任务启动器存入列表，然后分别启动，启动后结果存入列表
+    :param jobs:
+    :return:
+    '''
     job_list_arg = []
     arg_list = []
     arg_num = []
@@ -112,46 +124,143 @@ def main(jobs):
 
 def to_jinja(df_ags,df_arg,jobs):
     def return_time(times):
+        '''
+        处理时间d=天，h=小时，m=分钟，s=秒
+        :param times:
+        :return:
+        '''
         if "d" in times:
             return int(times.split("d")[0]) * 24 * 60
         elif "h" in times:
             return int(times.split("h")[0]) * 24
-        else:
+        elif "m" in times:
             return int(times.split("m")[0])
+        else:
+            return 1
 
+
+    def contain(df):
+        '''
+        处理arg的sub状态如果是有空和sub返回，如果是wait或者down不返回
+        :param df:
+        :return:
+        '''
+
+        if  df["NAME"]==None or df["NAME"]==np.nan :
+            return True
+        else:
+
+            if "sub" in df["NAME"]:
+                return  True
+            else:
+                return False
 
     def fillter_ags(df,df2):
+        '''
+        ags 命令 Failed返回failed
+        None 返回 none Failed
+        其他返回successed
+
+        :param df:
+        :param df2:
+        :return:
+        '''
         sample = df.check
         df_check = df2[df2.check_sample==sample]
-        if ("Failed" in df_check["STATUS"].values) or (df_check["STATUS"][df_check["STATUS"].isna()].size>0):
-
+        if ("Failed" in df_check["STATUS"].values) :
             return "Failed"
+        elif (df_check["STATUS"][df_check["STATUS"].isna()].size>0):
+
+            return "None Failed"
         else:
                 return "Successed"
 
     def fillter_arg(df, df2):
+        '''
+        arg的sub状态 对每个样本筛选出一个dateframe 然后查询
+        sub任务 是否为空
+        否返回None Failed
+        是判断RUNNING 在 时间大于30m 返回running Failed
+        其他返回success
+        :param df:
+        :param df2:
+        :return:
+        '''
         sample = df.check
+
         df_check = df2[df2.check_sample == sample]
 
-        if ("Failed" in df_check["STATUS"].values) or (df_check["STATUS"][df_check["STATUS"].isna()].size>0):
+        if df_check[df_check.apply(contain,axis=1)].size > 0:
+            df_check = df_check[df_check.apply(contain,axis=1)]
+            if ("Failed" in df_check["STATUS"].values) or (df_check["STATUS"][df_check["STATUS"].isna()].size > 0):
 
-            return "Failed"
-        else:
-            if "Running" in list(df_check["STATUS"]) and df_check["DURATION"][
-                df_check["DURATION"].apply(return_time) > 30].size > 0:
                 return "Failed"
             else:
-                return "Successed"
+                if ("Running" in df_check["STATUS"].values) and (df_check["DURATION"][
+                                                                     df_check["DURATION"].apply(
+                                                                         return_time) > 30].size > 0):
+                    return "Running Failed"
+                else:
+                    return "Successed"
+        else:
+            return "None Failed"
+
+    def contain_other(df):
+        '''
+        判断wait 和 down
+        :param df:
+        :return:
+        '''
+
+        if  df["NAME"]==None or df["NAME"]==np.nan :
+            return True
+        else:
+
+            if "wait" in df["NAME"] or "down" in df["NAME"]:
+                return  True
+            else:
+                return False
+
+    def filter_other(df, df2):
+        '''
+        与arg other 处理wait 与 down 状态
+
+        :param df:
+        :param df2:
+        :return:
+        '''
+        sample = df.check
+
+        df_check = df2[df2.check_sample == sample]
+
+        if df_check[df_check.apply(contain_other, axis=1)].size > 0:
+            df_check = df_check[df_check.apply(contain_other, axis=1)]
+            if ("Failed" in df_check["STATUS"].values) or (df_check["STATUS"][df_check["STATUS"].isna()].size > 0):
+
+                return "Failed"
+            else:
+                # print(df_check["STATUS"],df_check["NAME"])
+                if ("Running" in df_check["STATUS"].values) and (df_check[df_check["NAME"].str.contains("down")].size >0):
+                    return "Down Running"
+                else:
+                    return "Successed"
+        else:
+            return "None Failed"
 
     a=pd.DataFrame({
-         "sample_PID":jobs["PID"],
-        "sample_T":jobs["sample_T"],
-        "sample_N":jobs["sample_N"],
-        "check":jobs["check_sample"],
-    })
+                        "panel":jobs["panel"],
+                         "sample_PID":jobs["PID"],
+                        "sample_T":jobs["sample_T"],
+                        "sample_N":jobs["sample_N"],
+                        "check":jobs["check_sample"],
+                    })
     a["ags"] = a.apply(fillter_ags,args=(df_ags,),axis=1)
     a["arg"] = a.apply(fillter_arg, args=(df_arg,), axis=1)
-    return a,df_ags,df_arg
+    a["waitordown"] = a.apply(filter_other, args=(df_arg,), axis=1)
+    df_other = df_arg[df_arg.apply(contain_other, axis=1)]
+    df_arg = df_arg[df_arg.apply(contain,axis=1)]
+
+    return a,df_ags,df_arg,df_other
 if __name__ == '__main__':
     jobs = pd.read_csv("./job.csv",encoding="gbk",header=None,names=["panel","PID","sample_N","sample_T","chip","name"])
     def check_list(df):
@@ -162,15 +271,5 @@ if __name__ == '__main__':
     jobs["check_sample"] = jobs.apply(check_list,axis=1)
     df_ags,df_arg=main(jobs)
     print(df_ags,df_arg)
-    a, df_ags, df_arg = to_jinja(df_ags,df_arg,jobs)
+    a, df_ags, df_arg,df_other = to_jinja(df_ags,df_arg,jobs)
 
-    # def split_df(df):
-    #     if df["arg_result"] != 'None':
-    #
-    #         return [i for i in df["arg_result"] if "sub" in i]
-    #     else:
-    #         return "None"
-    # a["ago_sub"]=a.apply(split_df,axis=1)
-    # e=a.drop('ags_result', axis=1).join(
-    #     a['ags_result'].str.split('/', expand=True).stack().reset_index(level=1, drop=True).rename('ags_result'))
-    # print(e)

@@ -13,25 +13,16 @@ import job_monitor
 import pandas as pd
 from werkzeug.utils import secure_filename
 from flask import g
+from flask_script import Manager,Server,Command, Option
+from gevent.pywsgi import WSGIServer
 
 UPLOAD_FOLDER = '/hongshan/software/zhaohongqiang/monitor'
 ALLOWED_EXTENSIONS = ['txt', 'xls',"xlsx",'csv']
 
-def main(json_file,):
+def main():
     app = Flask(__name__)
-    app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-                # static_url_path='',
-                # # static_folder='../',
-                # )
-    # f = open(json_file, 'r')
-    # foundation_dict = json.load(f)
-    # if 'personalise' in foundation_dict:
-    #     pass
-    # else:
-    #     foundation_dict['personalise'] = []
-    #
-    #     with open(json_file, 'w', ) as f:
-    #         f.write(json.dumps(foundation_dict, encoding='UTF-8', ensure_ascii=False))
+    http_server = WSGIServer(('127.0.0.1', 5000), app)
+
 
     def allowed_file(filename):
         return '.' in filename and \
@@ -46,108 +37,107 @@ def main(json_file,):
 
         elif request.method == 'POST':
             if request.form.get('name'):
+                global  date, names
                 names= request.form.get('name')
                 date= request.form.get('date')
                 global flow_cell
                 flow_cell = request.form.get('flow_cell')
-                print(names,date,flow_cell)
+                # print(names,date,flow_cell)
                 try:
-                    os.mkdir("./{date}_{names}".format(**locals()))
+                    os.mkdir("/hongshan/software/auto_submit/sub_log/{date}_{names}".format(date=date,names=names))
                     types="成功"
                 except:
-                    types="文件存在或者失败"
+                    if os.path.exists("/hongshan/software/auto_submit/sub_log/{date}_{names}".format(date=date,names=names)):
+                        types = "文件存在"
+                    else:
+                        types="文件存在或者失败"
                 return render_template("index.html",a=pd.DataFrame(),name=names,date=date,flow_cell=flow_cell,types=types)
             if request.files['file']:
                 file = request.files['file']
                 if file and allowed_file(file.filename):
                     filename = secure_filename(file.filename)
-                    file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                    jobs = pd.read_csv(filename, encoding="gbk", header=None,
+
+                    file.save(os.path.join("/hongshan/software/auto_submit/sub_log/{date}_{names}".format(date=date,names=names), filename))
+                    jobs = pd.read_csv(os.path.join("/hongshan/software/auto_submit/sub_log/{date}_{names}".format(date=date,names=names), filename), encoding="gbk", header=None,
                                        names=["panel", "PID", "sample_N", "sample_T", "chip", "name"])
+                    jobs=jobs[jobs.name != "数据不全"]
+
                     def check_list(df):
                         if df["sample_T"] == "yaml无T":
                             return df["sample_N"]
+                        elif df["sample_T"] == "CT白细胞-请核查":
+                            return df["sample_N"]
+                        elif "/" in df["sample_T"]:
+                            return df["sample_T"].split("/")[0].strip()
                         else:
                             return df["sample_T"]
 
                     jobs["check_sample"] = jobs.apply(check_list, axis=1)
-                    global a, df_ags, df_arg
+                    jobs.to_csv(os.path.join("/hongshan/software/auto_submit/sub_log/{date}_{names}".format(date=date,names=names), "jobs_fillter.csv"))
+                    global a, df_ags, df_arg,df_other
                     df_ags, df_arg = job_monitor.main(jobs)
+                    df_arg.to_csv(os.path.join("/hongshan/software/auto_submit/sub_log/{date}_{names}".format(date=date,names=names), "arg_result.csv"))
+                    df_ags.to_csv(os.path.join(
+                        "/hongshan/software/auto_submit/sub_log/{date}_{names}".format(date=date, names=names),
+                        "ags_result.csv"))
+                    a, df_ags, df_arg,df_other = job_monitor.to_jinja(df_ags, df_arg,jobs)
+                    return render_template("index.html",a=a,df_ags=df_ags, df_arg=df_arg,df_other=df_other,
+                                            filename=os.path.join(
+                        "/hongshan/software/auto_submit/sub_log/{date}_{names}".format(date=date, names=names),
+                        filename),name=names,date=date,flow_cell=flow_cell
+                                           )
 
-                    a, df_ags, df_arg = job_monitor.to_jinja(df_ags, df_arg,jobs)
-                    return render_template("index.html",a=a,df_ags=df_ags, df_arg=df_arg,
-                                            filename=filename)
 
-
-    @app.route('/delags/<NAMES>',)
-    def delags(NAMES):
-        global flow_cell
+    @app.route('/delags/<NAMES><sample_T>',)
+    def delags(NAMES,sample_T):
+        global flow_cell, date, names
+        global a, df_ags, df_arg,df_other
         # open("/hongshan/software/auto_submit/PC_{flow_cell}.sh".format(**locals()))
-        print(f"hand ags delete {NAMES}")
-        global a, df_ags, df_arg
+        with open(os.path.join("/hongshan/software/auto_submit/sub_log/{date}_{names}".format(date=date,names=names), "ags_del_log.sh"),"a+") as f:
+            f.write(f"hand ags delete {NAMES}\n\n")
+
+
         # 这个函数可以放你要运行的代码，然后返回相应的值
-        return render_template("index.html", a=a,df_ags=df_ags, df_arg=df_arg,)
-    @app.route('/delarg/<NAMES>',)
-    def delarg(NAMES):
-        global flow_cell
+        return "重投命令以写入arg_del_log.sh\n命令为："+f"hand ags delete {NAMES}"#render_template("index.html", a=a,df_ags=df_ags, df_arg=df_arg,df_other=df_other,)
+
+    @app.route('/delarg/<NAMES><sample_T>',)
+    def delarg(NAMES,sample_T):
+        global a, df_ags, df_arg,df_other,flow_cell, date, names
         # open("/hongshan/software/auto_submit/PC_{flow_cell}.sh".format(**locals()))
-        print(f"hand arg -n sxlj delete {NAMES}")
-        global a, df_ags, df_arg
+        with open(os.path.join("/hongshan/software/auto_submit/sub_log/{date}_{names}".format(date=date,names=names), "arg_del_log.sh"),"a+") as f:
+            f.write(f"hand arg -n sxlj delete {NAMES}\n\n")
+        global a, df_ags, df_arg,df_other
+
         # 这个函数可以放你要运行的代码，然后返回相应的值
-        return render_template("index.html", a=a,df_ags=df_ags, df_arg=df_arg,)
+        return "重投命令以写入arg_del_log.sh\n命令为："+f"hand arg -n sxlj delete {NAMES}"
+        #render_template("index.html", a=a,df_ags=df_ags, df_arg=df_arg,df_other=df_other,)
 
-    @app.route('/hello')  # 按钮指向的路由
-    def hello():
-        global a
+    @app.route('/restart/<sample_T>')  # 按钮指向的路由
+    def restart(sample_T):
+        global a,flow_cell
+
+        flow_cell_file = "/hongshan/software/auto_submit/PC_{flow_cell}.sh".format(flow_cell=flow_cell)
+
+        info = os.popen("cat {flow_cell_file} |grep {sample_T} ".format(flow_cell_file=flow_cell_file,sample_T=sample_T)).read()
+        print(info)
+        with open(os.path.join("/hongshan/software/auto_submit/sub_log/{date}_{names}".format(date=date,names=names), "restart.sh"),"a+") as f:
+            f.write(f"{info}\n\n")
         # 这个函数可以放你要运行的代码，然后返回相应的值
-        return render_template("index.html",a=a)
+        return "重投命令以写入restart.sh\n命令为："+info#render_template("index.html", a=a,df_ags=df_ags, df_arg=df_arg,df_other=df_other,)
 
 
 
 
-    return app
+
+    return http_server
 
 
 if __name__ == '__main__':
-    # jobs = pd.read_csv("./job.csv", encoding="gbk", header=None,
-    #                    names=["panel", "PID", "sample_N", "sample_T", "chip", "name"])
+    http_server=main()
+    http_server.serve_forever()
+    # app.debug = True
+    # manager = main()
+    # manager.add_command("gunicorn", GunicornServer( ))
+    # manager.add_command("runserver",Server(host='172.16.36.1' ))
     #
-    #
-    # def check_list(df):
-    #     if df["sample_T"] == "yaml无T":
-    #         return df["sample_N"]
-    #     else:
-    #         return df["sample_T"]
-    #
-    #
-    # jobs["check_sample"] = jobs.apply(check_list, axis=1)
-    #
-    # ags_list, arg_list = job_monitor.main()
-    # a = pd.DataFrame({
-    #     "sample_PID": jobs["PID"],
-    #     "sample_T": jobs["sample_T"],
-    #     "sample_N": jobs["sample_N"],
-    #     "ags_result": ags_list,
-    #     "arg_result": arg_list,
-    #     "arg_sub": jobs["sample_N"],
-    #     "arg_wait": jobs["sample_N"],
-    #     "check": jobs["check_sample"],
-    #
-    # })
-    #
-    #
-    # def split_df(df):
-    #     if df["arg_result"] != 'None':
-    #
-    #         return [i for i in df["arg_result"] if "sub" in i][0]
-    #     else:
-    #         return "None"
-    #
-    #
-    # a["ago_sub"] = a.apply(split_df, axis=1)
-    # print(a)
-    # a.to_csv("test.csv")
-    # a=pd.read_csv("test.csv")
-    # print(a)
-    app = main('test')
-    app.run(host='172.16.36.1')
+    # manager.run()
