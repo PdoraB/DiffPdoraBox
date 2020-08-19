@@ -1,4 +1,7 @@
 {
     "python.pythonPath": "/Users/soliva/software/anaconda3/bin/python",
-    "julia.executablePath": "/Applications/Julia-1.4.app/Contents/Resources/julia/bin/julia ", 
+    "julia.executablePath": "/Applications/Julia-1.4.app/Contents/Resources/julia/bin/julia",
+    "julia.execution.resultType": "both",
+    "julia.execution.codeInREPL": true,
+    
 }
